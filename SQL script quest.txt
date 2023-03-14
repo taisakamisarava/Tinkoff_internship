@@ -19,59 +19,30 @@ where
 /*
 У какого квеста (укажите его quest_nm) разница доли состоявшихся квестов в декабре 2022 и в январе 2023 наибольшая по модулю? Долей считать количество состоявшихся квестов деленное на количество заявленных. В случае наличия нескольких квестов, подходящих под условие, требуется вывести тот, у которого значение quest_rk больше.
 */
-
-with dec_data AS(
-  select 
-    q.quest_rk, 
-    sum(game_flg) as scheduled, 
-    sum(finish_flg) as played, 
-    sum(finish_flg) / sum(game_flg) as share_dec 
-  from 
-    quest q 
-    inner join game g on q.quest_rk = g.quest_rk 
-  where 
-    date_part('month', game_dttm) = 12 
-    and date_part('year', game_dttm) = 2022 
-  group by 
-    q.quest_rk 
-  having 
-    sum(game_flg) not in (0)
-), 
-jan_data as (
-  select 
-    q.quest_rk, 
-    sum(game_flg) as scheduled, 
-    sum(finish_flg) as played, 
-    sum(finish_flg) / sum(game_flg) as share_jan 
-  from 
-    quest q 
-    inner join game g on q.quest_rk = g.quest_rk 
-  where 
-    date_part('month', game_dttm) = 01 
-    and date_part('year', game_dttm) = 2023 
-  group by 
-    q.quest_rk 
-  having 
-    sum(game_flg) not in (0)
+with dolya_dec as (  
+select g.quest_rk,  
+       avg(g.game_flg) as dolya_gms --среднее как раз покажет отношение кол-ва единичек к общему кол-ву игр по квесту 
+  from msu_analytics.game as g 
+ where 1=1  
+   and g.game_dttm >= '2022-12-01'::date 
+   and g.game_dttm < '2023-01-01'::date 
+group by 1  
+),  
+dolya_jan AS (  
+select g.quest_rk,  
+       avg(g.game_flg) as dolya_gms  
+  from msu_analytics.game as g 
+ where 1=1  
+   and g.game_dttm >= '2023-01-01'::date 
+   and g.game_dttm < '2023-02-01'::date 
+group by 1  
 ) 
-select 
-  dec_data.quest_rk, 
-  dec_data.scheduled as scheduled_dec, 
-  dec_data.played as played_dec, 
-  jan_data.scheduled as scheduled_jan, 
-  jan_data.played as played_jan, 
-  (dec_data.played / dec_data.scheduled) as dec_share, 
-  (jan_data.played / jan_data.scheduled) as jan_share, 
-  abs((jan_data.played / jan_data.scheduled) - (dec_data.played / dec_data.scheduled)) as difference
-from 
-  dec_data 
-  left join jan_data on dec_data.quest_rk = jan_data.quest_rk 
-order by 
-  result desc, 
-  quest_rk desc;
-
-
-select 
-  * 
-from 
-  quest q;
+select q.quest_nm, 
+       dd.quest_rk,  
+       abs(dd.dolya_gms - dj.dolya_gms) as diff -- разница между долей состоявшихся квестов в декабре и январе (что было предрассчитано в CTE) 
+  from dolya_dec as dd 
+ inner join dolya_jan as dj 
+    on dd.quest_rk = dj.quest_rk  
+ inner join msu_analytics.quest as q -- подтягиваем quest_nm 
+    on dd.quest_rk = q.quest_rk  
+ order by 3 desc, 2 desc; -- ответ в первой строке 
