@@ -1,0 +1,16 @@
+select 
+  c.client_rk, 
+  max(c.visit_dttm) as visit_dttm, 
+  max(
+    case when acc.registration_dttm is not null then 1 else 0 end) as registration_flag, 
+  max(
+    case when app.application_dttm is not null then 1 else 0 end) as application_flag, 
+  max(
+    case when g.game_flg = 1 then 1 else 0 end) as finish_flag 
+from 
+  client c 
+  left join account acc on c.client_rk = acc.client_rk 
+  left join application app on acc.account_rk = app.account_rk 
+  left join game g on app.game_rk = g.game_rk 
+group by 
+  c.client_rk
