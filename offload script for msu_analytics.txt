@@ -1,0 +1,53 @@
+with client_data as (
+  select 
+    client_rk, 
+    visit_dttm 
+  from 
+    client c
+), 
+game_data as (
+  select 
+    game_rk, 
+    game_dttm, 
+    game_flg, 
+    finish_flg 
+  from 
+    game g
+), 
+account_data as (
+  select 
+    account_rk, 
+    client_rk, 
+    registration_dttm 
+  from 
+    account a
+), 
+application_data as (
+  select 
+    * 
+  from 
+    application a
+) 
+select 
+  client_data.client_rk, 
+  client_data.visit_dttm, 
+  account_data.account_rk, 
+  account_data.registration_dttm, 
+  application_data.application_rk, 
+  application_data.game_rk, 
+  application_data.application_dttm, 
+  game_data.game_dttm, 
+  game_data.game_flg, 
+  game_data.finish_flg, 
+  sum(game_data.game_flg) OVER (
+    PARTITION BY client_data.client_rk
+  ) as games_played, 
+  sum(game_data.finish_flg) OVER (
+    PARTITION BY client_data.client_rk
+  ) as games_finished 
+from 
+  client_data 
+  left join account_data on client_data.client_rk = account_data.client_rk 
+  left join application_data on account_data.account_rk = application_data.account_rk 
+  left join game_data on application_data.game_rk = game_data.game_rk;
+
